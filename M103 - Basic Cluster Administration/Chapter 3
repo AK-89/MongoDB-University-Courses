@@ -1,0 +1,355 @@
+Lab - Configure a Sharded Cluster
+
+#Create 3 configuration files
+vi csrs1.conf
+sharding:
+  clusterRole: configsvr
+replication:
+  replSetName: m103-csrs
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+net:
+  bindIp: localhost,192.168.103.100
+  port: 26001
+systemLog:
+  destination: file
+  path: /var/mongodb/db/csrs1/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+storage:
+  dbPath: /var/mongodb/db/csrs1
+  
+  vi csrs2.conf
+  sharding:
+  clusterRole: configsvr
+replication:
+  replSetName: m103-csrs
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+net:
+  bindIp: localhost,192.168.103.100
+  port: 26002
+systemLog:
+  destination: file
+  path: /var/mongodb/db/csrs2.log
+  logAppend: true
+processManagement:
+  fork: true
+storage:
+  dbPath: /var/mongodb/db/csrs2
+  
+vi csrs3.conf
+sharding:
+  clusterRole: configsvr
+replication:
+  replSetName: m103-csrs
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+net:
+  bindIp: localhost,192.168.103.100
+  port: 26003
+systemLog:
+  destination: file
+  path: /var/mongodb/db/csrs3.log
+  logAppend: true
+processManagement:
+  fork: true
+storage:
+  dbPath: /var/mongodb/db/csrs3
+  
+#Start the three config servers:
+
+mongod -f csrs_1.conf
+mongod -f csrs_2.conf
+mongod -f csrs_3.conf  
+
+#Connect to mongo and initiate replica set
+mongo --port 26001
+use admin
+rs.initiate()
+db.createUser({
+  user: "m103-admin",
+  pwd: "m103-pass",
+  roles: [
+    {role: "root", db: "admin"}
+  ]
+})
+db.auth("m103-admin", "m103-pass")
+rs.add("192.168.103.100:26002")
+rs.add("192.168.103.100:26003")
+
+#Create mongos configuration
+vi mongos.conf
+sharding:
+  configDB: m103-csrs/192.168.103.100:26001
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+net:
+  bindIp: localhost,192.168.103.100
+  port: 26000
+systemLog:
+  destination: file
+  path: /var/mongodb/db/mongos.log
+  logAppend: true
+processManagement:
+  fork: true
+  
+#Check sharding status:
+sh.status()
+
+#Reconfigure m103-repl replica set nodes
+vi mongod-repl-1.conf
+storage:
+  dbPath: /var/mongodb/db/1
+  wiredTiger:
+     engineConfig:
+        cacheSizeGB: .1
+net:
+  bindIp: 192.168.103.100,localhost
+  port: 27001
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+systemLog:
+  destination: file
+  path: /var/mongodb/db/mongod1/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+operationProfiling:
+  slowOpThresholdMs: 50
+replication:
+  replSetName: m103-repl
+sharding:
+  clusterRole: shardsvr
+
+vi mongod-repl-2.conf
+storage:
+  dbPath: /var/mongodb/db/2
+  wiredTiger:
+     engineConfig:
+        cacheSizeGB: .1
+net:
+  bindIp: 192.168.103.100,localhost
+  port: 27002
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+systemLog:
+  destination: file
+  path: /var/mongodb/db/mongod2/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+operationProfiling:
+  slowOpThresholdMs: 50
+replication:
+  replSetName: m103-repl
+sharding:
+  clusterRole: shardsvr
+  
+vi mongod-repl-3.conf
+storage:
+  dbPath: /var/mongodb/db/3
+  wiredTiger:
+     engineConfig:
+        cacheSizeGB: .1
+net:
+  bindIp: 192.168.103.100,localhost
+  port: 27003
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+systemLog:
+  destination: file
+  path: /var/mongodb/db/mongod3/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+operationProfiling:
+  slowOpThresholdMs: 50
+replication:
+  replSetName: m103-repl
+sharding:
+  clusterRole: shardsvr
+  
+#Restart m103-repl with new configuration sharding enabled
+mongo --port 27002 -u "m103-admin" -p "m103-pass" --authenticationDatabase "admin"
+use admin
+db.shutdownServer()
+mongod -f mongod-repl-1.conf
+mongo --port 27003 -u "m103-admin" -p "m103-pass" --authenticationDatabase "admin"
+use admin
+db.shutdownServer()
+mongod -f mongod-repl-2.conf
+mongo --port 27001 -u "m103-admin" -p "m103-pass" --authenticationDatabase "admin"
+rs.stepDown()
+use admin
+db.shutdownServer()
+mongod -f mongod-repl-2.conf
+
+#Connect to mongos and add shard
+
+mongos
+sh.addShard("m103-repl/192.168.103.100:27001")
+validate_lab_first_sharded_cluster
+5a57de1cb1575291ce6e560a
+
+Lab - Shard a Collection
+
+#Create a replica set m103-repl-2
+mkdir /var/mongodb/db/{4,5,6}
+
+vi m103-repl-4.conf
+storage:
+  dbPath: /var/mongodb/db/4
+  wiredTiger:
+     engineConfig:
+        cacheSizeGB: .1
+net:
+  bindIp: 192.168.103.100,localhost
+  port: 27004
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+systemLog:
+  destination: file
+  path: /var/mongodb/db/4/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+operationProfiling:
+  slowOpThresholdMs: 50
+replication:
+  replSetName: m103-repl-2
+sharding:
+  clusterRole: shardsvr
+  
+vi m103-repl-5.conf
+storage:
+  dbPath: /var/mongodb/db/5
+  wiredTiger:
+     engineConfig:
+        cacheSizeGB: .1
+net:
+  bindIp: 192.168.103.100,localhost
+  port: 27005
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+systemLog:
+  destination: file
+  path: /var/mongodb/db/5/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+operationProfiling:
+  slowOpThresholdMs: 50
+replication:
+  replSetName: m103-repl-2
+sharding:
+  clusterRole: shardsvr
+  
+vi m103-repl-6.conf
+storage:
+  dbPath: /var/mongodb/db/6
+  wiredTiger:
+     engineConfig:
+        cacheSizeGB: .1
+net:
+  bindIp: 192.168.103.100,localhost
+  port: 27006
+security:
+  keyFile: /var/mongodb/pki/m103-keyfile
+systemLog:
+  destination: file
+  path: /var/mongodb/db/6/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+operationProfiling:
+  slowOpThresholdMs: 50
+replication:
+  replSetName: m103-repl-2
+sharding:
+  clusterRole: shardsvr
+  
+  mongod -f mongod-repl-4.conf
+  mongod -f mongod-repl-5.conf
+  mongod -f mongod-repl-6.conf
+  
+mongo --port 27004
+use admin
+rs.initiate()
+rs.add("192.168.103.100:27005")
+rs.add("192.168.103.100:27006")
+rs.status()
+exit
+
+#Connect to mongos and add shard
+mongos
+sh.addShard("m103-repl-2/192.168.103.100:27004")
+sh.status()
+
+#Exit mongo and import dataset
+mongoimport /dataset/products.json --port 26000 -u "m103-admin" \
+-p "m103-pass" --authenticationDatabase "admin" \
+--db m103 --collection products
+use m103
+db.products.count()
+516784
+
+#Collection fragmentation
+use m103
+db.products.findOne()
+db.products.distinct("type")
+sh.enableSharding("m103")
+db.products.createIndex({"name": 1})
+db.adminCommand( { shardCollection: "m103.products", key: { name: 1 } } )
+use m103
+db.products.drop()
+mongoimport /dataset/products.json --port 26000 -u "m103-admin" \
+-p "m103-pass" --authenticationDatabase "admin" \
+--db m103 --collection products
+
+vagrant@m103:~$ validate_lab_shard_collection
+5a621149d083824c6d889865
+
+Lab - Documents in Chunks
+mongo -u m103-admin -p mypass123 --authenticationDatabase admin --port 26000
+db.getSiblingDB("config").chunks.find(
+  {
+    "ns" : "m103.products"
+  }
+)
+
+db.getSiblingDB("config").chunks.find(
+   {
+      "ns" : "m103.products",
+      $expr: {
+         $and : [
+          {$gte : [ 21572585, "$min.sku"]},
+          {$lt : [21572585, "$max.sku"]}
+         ]
+      }
+   }
+)
+
+{
+  "_id" : "m103.products-sku_19765188",
+  "ns" : "m103.products",
+  "min" : {
+    "sku" : 19765188
+  },
+  "max" : {
+    "sku" : 22935319
+  },
+  "shard" : "shard2",
+  "lastmod" : Timestamp(1, 4),
+  "lastmodEpoch" : ObjectId("5a6103511d9376be96849296")
+}
+
+validate_lab_document_chunks <chunk-id>
+5ac28a604c7baf1f5c25d51b
+
+Lab - Detect Scatter Gather Queries
+
+Correct Answer:
+Query 1 performs a document fetch.
+Both queries perform an index scan before the sharding filter.
