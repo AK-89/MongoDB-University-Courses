@@ -1,0 +1,49 @@
+Lab 1.1: Install Course Dependencies
+
+After installing MongoDB, download handout people.json and import it to database: m201 and collection: people
+mongoimport --drop -d m201 -c people Path_to_file/people.json
+
+> db.people.count({ "email" : {"$exists": 1} })
+Correct Answer:
+50474
+
+Chapter 2: MongoDB Indexes
+
+Lab 2.1: Using Indexes to Sort
+Problem:
+
+In this lab you're going to determine which queries are able to successfully use a given index for both filtering and sorting.
+
+Given the following index:
+
+{ "first_name": 1, "address.state": -1, "address.city": -1, "ssn": 1 }
+Which of the following queries are able to use it for both filtering and sorting?
+
+Correct Answer:
+db.people.find({ "address.state": "South Dakota", "first_name": "Jessica" }).sort({ "address.city": -1 })
+db.people.find({ "first_name": "Jessica" }).sort({ "address.state": 1, "address.city": 1 })
+db.people.find({ "first_name": "Jessica", "address.state": { $lt: "S"} }).sort({ "address.state": 1 })
+
+
+Lab 2.2: Optimizing Compound Indexes
+
+Problem:
+In this lab you're going to examine several example queries and determine which compound index will best service them.
+Correct Answer:
+{ "address.state": 1, "last_name": 1, "job": 1 }
+
+Chapter 3: Index Operations
+Lab 3.1: Explain Output
+Correct Answer:
+{ "address.state": 1, "stars": 1, "name": 1 }
+
+Chapter 4: CRUD Optimization
+
+Lab 4.1: Equality, Sort, Range
+
+Correct Answer:
+{ city: 1, lastName: 1, firstName: 1, accountBalance: 1 }
+
+Lab 4.2: Aggregation Performance
+Correct Answer:
+{ stars: 1 }
