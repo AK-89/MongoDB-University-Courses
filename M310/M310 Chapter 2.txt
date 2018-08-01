@@ -1,0 +1,280 @@
+M310 : Chapter 2
+
+Homework 2.1 : Create Users for Different Tasks
+#Connect to VM database
+vagrant ssh database
+# Kill all the mongod processes.
+pkill mongod
+# Create the required data directories.
+mkdir -p ~/M310-HW-2.1/r0
+mkdir -p ~/M310-HW-2.1/r1
+mkdir -p ~/M310-HW-2.1/r2
+
+# Generate the keyfile in ~
+openssl rand -base64 755 > ~/M310-HW-2.1/keyfile
+chmod 400 ~/M310-HW-2.1/keyfile
+
+# Start the mongod instances.
+mongod --dbpath ~/M310-HW-2.1/r0 --logpath ~/M310-HW-2.1/r0/mongod.log --port 31210 --fork --auth --keyFile ~/M310-HW-2.1/keyfile --replSet HW-2.1
+mongod --dbpath ~/M310-HW-2.1/r1 --logpath ~/M310-HW-2.1/r1/mongod.log --port 31211 --fork --auth --keyFile ~/M310-HW-2.1/keyfile --replSet HW-2.1
+mongod --dbpath ~/M310-HW-2.1/r2 --logpath ~/M310-HW-2.1/r2/mongod.log --port 31212 --fork --auth --keyFile ~/M310-HW-2.1/keyfile --replSet HW-2.1
+
+# Initiate the replica set.
+mongo admin --port 31210
+use admin
+rs.initiate()"
+#Create 1st admin user
+
+mongo admin --port 31210
+use admin
+db.createUser({user: "userAdmin", pwd: "badges", roles: [{ role:"userAdminAnyDatabase", db: "admin" }]})
+
+#Authenticate admin to perform further steps
+db.auth("userAdmin","badges")
+
+#Create other users
+
+db.createUser({user: "sysAdmin", pwd: "cables", roles: [{ role:"clusterManager", db: "admin" }]})
+db.createUser({user: "dbAdmin", pwd: "collections", roles: [{ role:"dbAdminAnyDatabase", db: "admin" }]})
+db.createUser({user: "dataLoader", pwd: "dumpin", roles: [{ role:"readWriteAnyDatabase", db: "admin" }]})
+
+#Authenticate sysadmin to Adds other members to the replica set
+mongo admin --port 31210
+db.auth("userAdmin","badges")
+
+rs.add("database.m310.mongodb.university:31211")
+rs.add("database.m310.mongodb.university:31212")
+
+# Exit from mongo shell and validate the homework.
+./validate-hw-2.1.sh
+{"users":[{"user":"dataLoader","roles":[{"role":"readWriteAnyDatabase","db":"admin"}]},{"user":"dbAdmin","roles":[{"role":"dbAdminAnyDatabase","db":"admin"}]},{"user":"sysAdmin","roles":[{"role":"clusterManager","db":"admin"}]},{"user":"userAdmin","roles":[{"role":"userAdminAnyDatabase","db":"admin"}]}],"numMembers":3}
+
+
+Homework 2.2 : Create application specific users
+
+#Connect to VM database
+vagrant ssh database
+# Kill all the mongod processes.
+pkill mongod
+# Create the required data directories.
+mkdir -p ~/M310-HW-2.2/r0
+mkdir -p ~/M310-HW-2.2/r1
+mkdir -p ~/M310-HW-2.2/r2
+
+# Generate the keyfile in ~. 
+openssl rand -base64 755 > ~/M310-HW-2.2/keyfile
+chmod 600 ~/M310-HW-2.2/keyfile
+
+# Start the mongod instances.
+cd ~/shared
+mongod --dbpath ~/M310-HW-2.2/r0 --logpath ~/M310-HW-2.2/r0/mongod.log --port 31220 --fork --auth --keyFile ~/M310-HW-2.2/keyfile --replSet HW-2.2
+mongod --dbpath ~/M310-HW-2.2/r1 --logpath ~/M310-HW-2.2/r1/mongod.log --port 31221 --fork --auth --keyFile ~/M310-HW-2.2/keyfile --replSet HW-2.2
+mongod --dbpath ~/M310-HW-2.2/r2 --logpath ~/M310-HW-2.2/r2/mongod.log --port 31222 --fork --auth --keyFile ~/M310-HW-2.2/keyfile --replSet HW-2.2
+
+# Initiate the replica set.
+mongo admin --port 31220 
+use admin
+rs.initiate()
+
+#Create 1st admin user.
+db.createUser({user: "admin", pwd: "webscale", roles: [{ role:"root", db: "admin" }]})
+
+#Authenticate admin to perform further steps.
+db.auth("admin","webscale")
+
+#Create other users.
+db.createUser({user: "reader", pwd: "books", roles: [{ role:"read", db: "acme" }]})
+db.createUser({user: "writer", pwd: "typewriter", roles: [{ role:"readWrite", db: "acme" }]})
+
+#Add other members of replica set.
+rs.add("database.m310.mongodb.university:31221")
+rs.add("database.m310.mongodb.university:31222")
+
+#Exit from mongo shell and validate homework
+./validate-hw-2.2.sh
+{ "users": [ {"user":"admin","roles":[{"role":"root","db":"admin"}]}, {"user":"reader","roles":[{"role":"read","db":"acme"}]}, {"user":"writer","roles":[{"role":"readWrite","db":"acme"}]} ], "numMembers":3 }
+
+
+Homework 2.3 : Create custom role
+#Connect to VM database
+vagrant ssh database
+# Kill all the mongod processes.
+pkill mongod
+# Create the required data directory.
+mkdir -p ~/M310-HW-2.3
+
+# Start the mongod instance.
+mongod --dbpath ~/M310-HW-2.3 --logpath ~/M310-HW-2.3/mongo.log --port 31230 --fork
+
+# Create the required users.
+
+#User 1: HRDEPARTMENT
+Privileges:	
+Can find documents on any collection on the HR database
+Can insert documents only on HR.employees
+Can remove users from the HR database
+ # 
+mongo admin --port 31230 
+use admin
+db.createRole({
+  role: "HRDEPARTMENT",
+  privileges: [
+    {
+      resource: { db: "HR", collection: "" },
+      actions: [ "find", "dropUser" ]
+    }, {
+      resource: { db: "HR", collection: "employees" },
+      actions: [ "insert" ]
+    }
+  ],
+  roles:[]
+})
+
+# User2: MANAGEMENT
+Priviledges:
+Inherits the dbOwner role of the HR database
+Can insert on all collections in the HR database 
+#
+db.createRole({
+  role: "MANAGEMENT",
+  privileges: [{
+    resource: { db: "HR", collection: "" },
+    actions: [ "insert" ]
+  }],
+  roles:[{
+    role: "dbOwner", db: "HR"
+  }]
+})
+
+# User3: EMPLOYEEPORTAL
+Priviledges:
+Can read from HR.employees collection
+Can update HR.employees documents
+#
+db.createRole({
+  role: "EMPLOYEEPORTAL",
+  privileges: [{
+    resource: { db: "HR", collection: "employees" },
+    actions: [ "find", "update" ]
+  }],
+  roles:[]
+})
+# Exit from mongo shell and validate the homework.
+./validate-hw-2.3.sh
+[ {"role":"EMPLOYEEPORTAL","inheritedRoles":[], "privileges":[{"resource":{"db":"HR","collection":"employees"},"actions":["find","update"]}]},{"role":"HRDEPARTMENT","inheritedRoles":[],"privileges":[{"resource":{"db":"HR","collection":""},"actions":["dropUser","find"]},{"resource":{"db":"HR","collection":"employees"},"actions":["insert"]}]},{"role":"MANAGEMENT","inheritedRoles":[{"role":"dbOwner","db":"HR"}],"privileges":[{"resource":{"db":"HR","collection":""},"actions":["insert"]}]}]
+
+Homework 2.4 : Create replica with TLS enabled
+#Connect to VM database
+vagrant ssh database
+# Kill all the mongod processes.
+pkill mongod
+# Create the required data directories.
+mkdir -p ~/M310-HW-2.4/r0
+mkdir -p ~/M310-HW-2.4/r1
+mkdir -p ~/M310-HW-2.4/r2
+
+# Start the mongod instances.
+mongod --port 31240 --dbpath ~/M310-HW-2.4/r0 --logpath ~/M310-HW-2.4/r0/mongod.log --fork --sslMode requireSSL --replSet HW-2.4 --sslCAFile ~/shared/certs/ca.pem --sslPEMKeyFile ~/shared/certs/server.pem
+mongod --port 31241 --dbpath ~/M310-HW-2.4/r1 --logpath ~/M310-HW-2.4/r1/mongod.log --fork --sslMode requireSSL --replSet HW-2.4 --sslCAFile ~/shared/certs/ca.pem --sslPEMKeyFile ~/shared/certs/server.pem
+mongod --port 31242 --dbpath ~/M310-HW-2.4/r2 --logpath ~/M310-HW-2.4/r2/mongod.log --fork --sslMode requireSSL --replSet HW-2.4 --sslCAFile ~/shared/certs/ca.pem --sslPEMKeyFile ~/shared/certs/server.pem
+
+# Initiate the replica set.
+mongo --port 31240 --host database.m310.mongodb.university --ssl --sslPEMKeyFile ~/shared/certs/client.pem --sslCAFile ~/shared/certs/ca.pem 
+use admin
+rs.initiate({
+        "_id" : "HW-2.4",
+        "members" : [
+    {
+      "_id" : 0,
+      "host" : "database.m310.mongodb.university:31240"
+    },
+    {
+      "_id" : 1,
+      "host" : "database.m310.mongodb.university:31241"
+    },
+    {
+      "_id" : 2,
+      "host" : "database.m310.mongodb.university:31242"
+    }
+  ]
+}
+)
+
+# Exit from mongo shell and validate the homework..
+./validate-hw-2.4.sh
+{"numMembers":3}
+
+Homework 2.5 : Update replica set nodes to enable encrypted storage engine
+
+#Connect to VM database
+vagrant ssh database
+# Kill all the mongod processes.
+pkill mongod
+# Create the required data directory.
+mkdir –p ~/ M310-HW-2.5
+# Setup the homework.
+cd ~/shared
+./setup-hw-2.5.sh
+
+#Step1: Create a keyfile to use as the external master key.
+openssl rand -base64 32 > ~/M310-HW-2.5/encryptionKeyFile
+chmod 600 ~/M310-HW-2.5/encryptionKeyFile
+
+#Step 2: Safely shutdown a secondary of the replica set and delete the old database files.
+mongo --port 31251 
+use admin
+db.shutdownServer()
+exit
+sleep 3
+rm -rf ~/M310-HW-2.5/r1/*
+
+#Step 3: Restart the server with storage encryption enabled
+
+mongod --dbpath ~/M310-HW-2.5/r1 --logpath ~/M310-HW-2.5/r1/mongod.log --port 31251 --replSet UNENCRYPTED --fork --enableEncryption --encryptionKeyFile ~/M310-HW-2.5/encryptionKeyFile
+
+#Step 4: Repeat steps 2 and 3 for the other secondary.
+mongo --port 31252
+use admin
+db.shutdownServer()
+exit
+sleep 3
+rm -rf ~/M310-HW-2.5/r2/*
+
+mongod --dbpath ~/M310-HW-2.5/r2 --logpath ~/M310-HW-2.5/r2/mongod.log --port 31252 --replSet UNENCRYPTED --fork --enableEncryption --encryptionKeyFile ~/M310-HW-2.5/encryptionKeyFile
+
+#Step 5: Step down the primary and repeat steps 2 and 3 on the former primary.
+
+mongo --port 31250 
+use admin 
+rs.stepDown()
+db.shutdownServer()
+exit
+sleep 3
+rm -rf ~/M310-HW-2.5/r0/*
+mongod --dbpath ~/M310-HW-2.5/r0 --logpath ~/M310-HW-2.5/r0/mongod.log --port 31250 --replSet UNENCRYPTED --fork --enableEncryption --encryptionKeyFile ~/M310-HW-2.5/encryptionKeyFile
+# Exit from mongo shell and validate the homework.
+./validate-hw-2.5.sh
+{"doc":{"str":"The quick brown fox jumps over the lazy dog"},"isEnabled":true}
+
+Homework 2.6 : Configure KMIP backed mongod
+
+# Kill all the mongod processes.
+pkill mongod
+#Setup homework in VM infrastructure.
+vagrant ssh infrastructure
+cd shared
+./setup-hw-2.6.sh
+#Start the KMIP server.
+python pykmip_server.py
+
+#Connect to VM database and create data directory.
+vagrant ssh database
+mkdir -p ~/M310-HW-2.6/
+
+# Start the mongod instance with KMIP.
+mongod --dbpath ~/M310-HW-2.6/ --logpath ~/M310-HW-2.6/mongod.log --enableEncryption --kmipServerName infrastructure.m310.mongodb.university --kmipServerCAFile ~/shared/certs/ca.pem --kmipClientCertificateFile ~/shared/certs/client.pem --fork --port 31260
+
+# Exit from mongo shell and validate the homework.
+./validate-hw-2.6.sh
+{isEnabled: true, usingKMIP: true}
+

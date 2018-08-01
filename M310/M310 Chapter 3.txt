@@ -1,0 +1,90 @@
+Chapter 3 Auditing and Best Practices
+
+Homework 3.1 : Enable auditing on replica set
+
+#Connect to VM database
+vagrant ssh database
+
+# Kill all the mongod processes.
+pkill mongod
+
+# Create the required data directories.
+mkdir -p ~/M310-HW-3.1/r0
+mkdir -p ~/M310-HW-3.1/r1
+mkdir -p ~/M310-HW-3.1/r2
+
+# Start 3 mongod instances with auditing enabled
+mongod --dbpath ~/M310-HW-3.1/r0 --logpath ~/M310-HW-3.1/r0/mongod.log --port 31310 --fork --replSet HW-3.1 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.1/r0/auditLog.json
+mongod --dbpath ~/M310-HW-3.1/r1 --logpath ~/M310-HW-3.1/r1/mongod.log --port 31311 --fork --replSet HW-3.1 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.1/r1/auditLog.json
+mongod --dbpath ~/M310-HW-3.1/r2 --logpath ~/M310-HW-3.1/r2/mongod.log --port 31312 --fork --replSet HW-3.1 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.1/r2/auditLog.json
+
+#Initiate replica set
+mongo admin --port 31310
+use admin
+rs.initiate()
+rs.add("database.m310.mongodb.university:31311")
+rs.add("database.m310.mongodb.university:31312")
+
+# Exit from mongo shell and validate the homework.
+./validate-hw-3.1.sh
+{ numMembers: 3, auditLog: 1 }
+
+Homework 3.2 : Change audit filters to audit specific user
+
+#Connect to VM database
+vagrant ssh database
+
+# Kill all the mongod processes.
+pkill mongod
+# Create the required data directories.
+mkdir -p ~/M310-HW-3.2/r0
+mkdir -p ~/M310-HW-3.2/r1
+mkdir -p ~/M310-HW-3.2/r2
+# Start 3 mongod instances with audit filter on user steve
+mongod --dbpath ~/M310-HW-3.2/r0 --logpath ~/M310-HW-3.2/r0/mongo.log --port 31320 --fork --replSet HW-3.2 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.2/r0/auditLog.json --auditFilter '{"users.user": "steve" }'
+mongod --dbpath ~/M310-HW-3.2/r1 --logpath ~/M310-HW-3.2/r1/mongo.log --port 31321 --fork --replSet HW-3.2 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.2/r1/auditLog.json --auditFilter '{"users.user": "steve" }'
+mongod --dbpath ~/M310-HW-3.2/r2 --logpath ~/M310-HW-3.2/r2/mongo.log --port 31322 --fork --replSet HW-3.2 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.2/r2/auditLog.json --auditFilter '{"users.user": "steve" }'
+
+#Initiate replica set & create user
+mongo admin --port 31320
+use admin
+rs.initiate()
+rs.add("database.m310.mongodb.university:31321")
+rs.add("database.m310.mongodb.university:31322")
+db.createUser({user: "steve", pwd: "secret", roles: ["root"]})
+
+# Exit from mongo shell and validate the homework.
+./validate-hw-3.2.sh
+{ numMembers: 3, auditLog1: 1, auditLog2: 0 }
+
+
+
+Homework 3.3 : Enable DML audit
+
+#Connect to VM database
+vagrant ssh database
+
+# Kill all the mongod processes.
+pkill mongod
+
+# Create the required data directories.
+mkdir -p ~/M310-HW-3.3/r0
+mkdir -p ~/M310-HW-3.3/r1
+mkdir -p ~/M310-HW-3.3/r2
+# Start 3 mongod instances with DML audit enabled
+
+mongod --dbpath ~/M310-HW-3.3/r0 --logpath ~/M310-HW-3.3/r0/mongod.log --port 31330 --fork --replSet HW-3.3 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.3/r0/auditLog.json --setParameter auditAuthorizationSuccess=true
+mongod --dbpath ~/M310-HW-3.3/r1 --logpath ~/M310-HW-3.3/r1/mongod.log --port 31331 --fork --replSet HW-3.3 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.3/r1/auditLog.json --setParameter auditAuthorizationSuccess=true
+mongod --dbpath ~/M310-HW-3.3/r2 --logpath ~/M310-HW-3.3/r2/mongod.log --port 31332 --fork --replSet HW-3.3 --auditDestination file --auditFormat JSON --auditPath ~/M310-HW-3.3/r2/auditLog.json --setParameter auditAuthorizationSuccess=true
+
+#Initiate replica set
+mongo admin --port 31320
+use admin
+rs.initiate()
+rs.add("database.m310.mongodb.university:31331")
+rs.add("database.m310.mongodb.university:31332")
+
+
+# Exit from mongo shell and validate the homework.
+./validate-hw-3.3.sh
+{ numMembers: 3, auditLog: 1 }
