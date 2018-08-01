@@ -1,0 +1,70 @@
+Final: Question 1
+
+Problem:
+Which of the following are valid command line instructions to start a mongod? You may assume that all specified files already exist.
+Correct Answer:
+mongod --logpath /var/log/mongo/mongod.log --dbpath /data/db --fork
+mongod -f /etc/mongod.conf
+
+Final: Question 2
+Problem:
+
+Given the following config file:
+
+storage:
+  dbPath: /data/db
+systemLog:
+  destination: file
+  path: /var/log/mongod.log
+net:
+  bindIp: localhost,192.168.0.100
+security:
+  keyFile: /var/pki/keyfile
+processManagement:
+  fork: true
+How many directories must MongoDB have access to?
+
+Correct Answer:
+3
+
+Final: Question 3
+Problem:
+Given the following output from rs.status().members:
+At this moment, how many replica set members are eligible to become primary in the event of a failover?
+
+Correct Answer:
+5
+
+Final: Question 4
+
+Final Exam
+
+Final: Question 4
+Problem:
+Given the following replica set configuration:
+What errors are present in the above replica set configuration?
+Correct Answer:
+You cannot specify the same host information among multiple members.
+You cannot specify two members with the same _id.
+
+Final: Question 5
+Problem:
+Given the following replica set configuration:
+What is the most likely role served by the node with "_id": 3?
+
+Correct Answer:
+It serves as a "hot" backup of data in case of accidental data loss on the other members, like a DBA accidentally dropping the database.
+
+
+Final: Question 6
+Problem:
+Given the following shard key:
+{ "country": 1, "_id": 1 }
+Which of the following queries will be routed? Remember that queries may be routed to more than one shard.
+
+Correct Answer:
+db.customers.find({"country": "Norway", "_id": 54})
+db.customers.find({"country": { $gte: "Portugal", $lte: "Spain" }})
+db.customers.find({"_id": 914, "country": "Sweden"})
+
+
