@@ -1,0 +1,70 @@
+Final Exam: Replica Set Transactions
+
+Start a replica set and run the given set of operations.
+Answer:
+The output of line 10 is
+{
+  _id: 1,
+  value: "s1"
+}
+WriteConflict occurs on line 12
+
+Final Exam: Sharding
+Answer:
+Getting faster acknowledgements for writes with concern majority
+Aborting an operation running on many shards
+Getting faster chunk migrations
+
+Final Exam: Aggregation
+Insert the given document in a collection and execute the given aggregation.
+
+mongo
+use m040
+#insert document in collection
+db.mycol.insertOne({   _id: 1,   time: "10/01/2018" })
+#execute aggregation
+db.mycol.aggregate([
+  {
+    $addFields: {
+      time: {
+        $dateToParts: {
+          date: {
+            $dateFromString: {
+              dateString: "$time",
+              format: "%d/%m/%Y"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    $project:{
+      time: {
+        $dateFromParts: {
+          "month": {$add:[-13, "$time.month"]},
+          "year": "$time.year"
+        }
+      }
+    }
+  }
+])
+#output
+{ "_id" : 1, "time" : ISODate("2016-12-01T00:00:00Z") }
+
+
+Answer:
+The year on the date is 2016.
+The day in the date field is 1st of December.
+
+Final Exam: Atlas
+Answer:
+In Azure, Atlas supports backups as local snapshots in the region in which the cluster is located.
+You must use the live migrator tool to migrate out of the free tier.
+Atlas is compliant with SOC 2 and GDPR.
+
+Final Exam: Upgrade & Downgrade
+Answer:
+You can upgrade a cluster without downtime
+You can downgrade a cluster without downtime
+
