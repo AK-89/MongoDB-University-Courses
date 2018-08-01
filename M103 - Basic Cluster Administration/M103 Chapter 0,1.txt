@@ -1,0 +1,157 @@
+Chapter 0: Introduction & Setup
+
+Lab: Setting Up the Vagrant Environment
+validate_box
+Correct Answer:
+6445a3f8b6f1cc5873cf1ac94194903444602708d4eb189d42b6e65ca594d80d
+
+Lab - Launching Mongod
+C:\>cd MongoDB\m103\m103-vagrant-env
+C:\>vagrant up --provision
+C:\>vagrant ssh
+vagrant@m103:~$ mongod --port 27000 --dbpath /data/db --bind_ip 192.168.103.100,localhost --auth
+mongo admin --host localhost:27000 --eval '
+  db.createUser({
+    user: "m103-admin",
+    pwd: "m103-pass",
+    roles: [
+      {role: "root", db: "admin"}
+    ]
+  })
+'
+validate_lab_launch_mongod
+
+Correct Answer:
+5a21c6dd403b6546001e79c0
+
+Lab - Configuration File
+
+C:\>cd MongoDB\m103\m103-vagrant-env
+C:\>vagrant up --provision
+C:\>vagrant ssh
+# Edit the configuration file and save it.
+vagrant@m103:~$ sudo vim /etc/mongod.conf
+storage:
+  dbPath: /data/db
+  journal:
+    enabled: true
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log	
+net:
+  port: 27000
+  bindIp: 192.168.103.100,localhost	
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+security:
+  authorization: enabled	
+	
+#Start mongod instance with edited configuration file	
+vagrant@m103:~$ mongod --config /etc/mongod.conf
+validate_lab_configuration_file
+Correct Answer:
+5a2f0e41ae3c4e2f7427ee8f
+
+Lab - Change the Default DB Path
+
+C:\>cd MongoDB\m103\m103-vagrant-env
+C:\>vagrant up --provision
+C:\>vagrant ssh
+
+#create a new folder /var/mongodb/db/
+vagrant@m103:~$ sudo mkdir -p /var/mongodb/db
+
+#Change permissions
+sudo chown -R vagrant:vagrant /var/mongodb/
+
+#Edit configuration file
+sudo vim /etc/mongod.conf
+storage:
+  dbPath: /var/mongodb/db/
+  journal:
+    enabled: true
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+net:
+  port: 27000
+  bindIp: 192.168.103.100,localhost
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+security:
+  authorization: enabled
+  
+#Start mongod instance  
+mongod --config /etc/mongod.conf
+
+#Create admin user
+mongo admin --host localhost:27000 --eval '
+  db.createUser({
+    user: "m103-admin",
+    pwd: "m103-pass",
+    roles: [
+      {role: "root", db: "admin"}
+    ]
+  })
+'
+validate_lab_change_dbpath
+Correct Answer:
+5a2f973bcb6b357b57e6bf43
+
+Lab - Logging to a Different Facility
+
+#Edit configuration file
+sudo vim /etc/mongod.conf
+storage:
+  dbPath: /var/mongodb/db/
+  journal:
+    enabled: true
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/mongodb/db/mongod.log
+net:
+  port: 27000
+  bindIp: 192.168.103.100,localhost
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+  fork: true
+security:
+  authorization: enabled
+operationProfiling:
+     slowOpThresholdMs: 50
+     mode: all
+	 
+#Start mongod instance
+
+validate_lab_different_logpath
+Correct Answer:
+5a32e5835d7a25685155aa61
+
+Lab - Creating First Application User
+
+mongo --host localhost:27000 
+use admin
+db.auth("m103-admin","m103-pass")
+db.createUser({
+      user: "m103-application-user",
+      pwd: "m103-application-pass",
+      roles: [
+	  {role: "readWrite", db: "applicationData"}
+     ]
+  })
+  
+validate_lab_first_application_user
+Correct Answer:
+5a32fdd630bff1f2fcb87acf
+
+Lab - Importing a Dataset
+
+mongoimport  --host localhost:27000 -u m103-application-user -p m103-application-pass -d applicationData /dataset/products.json
+validate_lab_import_dataset
+Correct Answer:
+5a383323ba6dbcf3cbcaec97
+
+

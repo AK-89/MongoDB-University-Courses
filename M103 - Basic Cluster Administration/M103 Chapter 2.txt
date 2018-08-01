@@ -1,0 +1,132 @@
+Chapter 2: Replication
+
+Lab - Initiate a Replica Set Locally
+
+vagrant ssh
+#Create folder for keyfile and modify permissions
+sudo mkdir -p /var/mongodb/pki
+sudo chown vagrant:vagrant -R /var/mongodb
+openssl rand -base64 741 > /var/mongodb/pki/m103-keyfile
+chmod 600 /var/mongodb/pki/m103-keyfile
+
+#Create data directories
+mkdir -p /var/mongodb/db/1
+mkdir -p /var/mongodb/db/2
+mkdir -p /var/mongodb/db/3
+
+#Create configuration files
+
+vi mongod-repl-1.conf
+storage:
+  dbPath: /var/mongodb/db/1
+  journal:
+    enabled: true
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/mongodb/db/mongod1.log
+net:
+  port: 27001
+  bindIp: 192.168.103.100,localhost
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+  fork: true
+security:
+  authorization: enabled
+  keyFile: /var/mongodb/pki/m103-keyfile
+  
+#Start 1st mongod instance  
+mongod --config ./mongod-repl-1.conf  
+
+#Initialize the replica set, check status and create admin user.
+mongo --port 27001
+rs.initiate()
+rs.status()
+use admin
+db.createUser({
+    user: "m103-admin",
+    pwd: "m103-pass",
+    roles: [
+     {role: "root", db: "admin"}
+    ]
+ })
+ 
+#Create the other 2 configuration files
+vi mongod-repl-2.conf
+storage:
+  dbPath: /var/mongodb/db/2
+  journal:
+    enabled: true
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/mongodb/db/mongod2.log
+net:
+  port: 27002
+  bindIp: 192.168.103.100,localhost
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+  fork: true
+security:
+  authorization: enabled
+  keyFile: /var/mongodb/pki/m103-keyfile
+  
+vi mongod-repl-3.conf
+storage:
+  dbPath: /var/mongodb/db/3
+  journal:
+    enabled: true
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/mongodb/db/mongod3.log
+net:
+  port: 27003
+  bindIp: 192.168.103.100,localhost
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+  fork: true
+security:
+  authorization: enabled
+  keyFile: /var/mongodb/pki/m103-keyfile
+  
+#Start 2 more mongod instances
+mongod --config ./mongod-repl-2.conf
+mongod --config ./mongod-repl-3.conf  
+
+#Add members to the replica set
+mongo --port 27001
+rs.add("192.168.103.100:27002")
+rs.add("192.168.103.100:27003")
+rs.status()
+exit
+
+validate_lab_initialize_local_replica_set
+Correct Answer:
+5a4d32f979235b109001c7bc
+
+Lab - Remove and Re-Add a Node
+#Connect to cluster and check status
+mongo --port 27001 -u m103-admin -p m103-pass admin
+rs.status()
+#Remove a node
+rs.remove("192.168.103.100:27003")
+#Re add node using hostname
+rs.add("m103:27003")
+rs.status()
+exit
+validate_lab_remove_readd_node
+Correct Answer:
+5a4fff19c0324e9feb9f60b9
+
+Lab - Writes with Failovers
+Correct Answer:
+The unhealthy node will have the inserted document when it is brought back online.
+When a writeConcernError occurs, the document is still written to the healthy nodes.
+
+Lab - Read Concern and Read Preferences
+Correct Answer:
+nearest
+secondaryPreferred
+primaryPreferred
+secondary
